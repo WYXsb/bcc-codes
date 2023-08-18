@@ -3,11 +3,11 @@ import time
 
 from bcc import BPF
 
-src = r"""
+src = """
 BPF_RINGBUF_OUTPUT(buffer, 1 << 4);
 
 struct event {
-    char filename[16];
+    char filename[64];
     int dfd;
     int flags;
     int mode;
@@ -34,14 +34,16 @@ TRACEPOINT_PROBE(syscalls, sys_enter_openat) {
 """
 
 b = BPF(text=src)
-s =  "/proc/stat"
-t = 0
+path =  "./file"
+rootpath = "/home/wyx/workspace/bcc-codes/file"
+times = 0
+
 def callback(ctx, data, size):
-    global t
+    global times
     event = b['buffer'].event(data)
-    if s == event.filename.decode('utf-8'):
-        t = t + 1
-        print("%-16s %10d %10d %10d %d" % (event.filename.decode('utf-8'), event.dfd, event.flags, event.mode,t))
+    if path == event.filename.decode('utf-8') or rootpath == event.filename.decode('utf-8'):
+        times = times + 1
+        print("%-64s %10d %10d %10d %10d" % (event.filename.decode('utf-8'), event.dfd, event.flags, event.mode,times))
     
     
 
@@ -49,7 +51,7 @@ b['buffer'].open_ring_buffer(callback)
 
 print("Printing openat() calls, ctrl-c to exit.")
 
-print("%-16s %10s %10s %10s %10s" % ("FILENAME", "DIR_FD", "FLAGS", "MODE", "OPENTIME"))
+print("%-64s %10s %10s %10s %10s" % ("FILENAME", "DIR_FD", "FLAGS", "MODE", "OPENTIMES"))
 
 try:
     while 1:

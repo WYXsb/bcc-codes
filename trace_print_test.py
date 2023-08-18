@@ -18,9 +18,9 @@ b.attach_kprobe(event=b.get_syscall_fnname("sync"), fn_name="kprobe__sys_clone")
 print("PID MESSAGE")
 
 try:
-    # b.trace_print(fmt = "{1} {2} {3} {4} {5}")
-    while 1:
-        print("123")
+    b.trace_print()
+    #b.trace_print(fmt = "{1} {2} {3} {4} {5}")
+    # blocking
 except KeyboardInterrupt:
     print("bye")
     exit()
