@@ -13,22 +13,37 @@ struct event {
     int mode;
     int pid;
     int pname;
+    u64 opentime;
+    u64 lasttime;
 };
-
+BPF_HASH(birth, int, struct event , 10240);
 TRACEPOINT_PROBE(syscalls, sys_enter_openat) {
     int zero = 0;
 
     struct event event = {};
+    struct event *e1 = NULL;
 
     bpf_probe_read_user_str(event.filename, sizeof(event.filename), args->filename);
 
-
+    event.pid = bpf_get_current_pid_tgid() >> 32;
     event.dfd = args->dfd;
     event.flags = args->flags;
     event.mode = args->mode;
-
-    buffer.ringbuf_output(&event, sizeof(event), 0);
-
+    event.opentime = bpf_ktime_get_ns();
+    birth.update(&event.pid,&event);
+    return 0;
+}
+TRACEPOINT_PROBE(syscalls, sys_enter_close)
+{   
+    u32 pid = bpf_get_current_pid_tgid() >> 32;
+    struct event *event = NULL;
+    event = birth.lookup(&pid);
+    if(event != NULL)
+    {
+        //bpf_trace_printk("%s\\n",event->filename);
+        event->lasttime = bpf_ktime_get_ns() - event->opentime;
+        buffer.ringbuf_output(event, sizeof(struct event), 0);
+    }
     return 0;
 }
 """
@@ -40,9 +55,10 @@ rootpath = "/home/wyx/workspace/bcc-codes/file"
 
 def callback(ctx, data, size):
     event = b['buffer'].event(data)
-    if path == event.filename.decode('utf-8') or rootpath == event.filename.decode('utf-8'):
-        print("%-64s %10d %10d %10d %s" % (event.filename.decode('utf-8'), event.dfd, event.flags, event.mode,time.strftime('%a %b %d %H:%M:%S %Y', time.localtime())
-))
+    # if path == event.filename.decode('utf-8') or rootpath == event.filename.decode('utf-8'):
+    # print("%-64s %10d %10d %10d %s" % (event.filename.decode('utf-8'), event.dfd, event.flags, event.mode,time.strftime('%a %b %d %H:%M:%S %Y', time.localtime())
+    print("%-64s %10d %10d %10d %24d" % (event.filename.decode('utf-8'), event.dfd, event.flags, event.mode,event.lasttime))
+
     
     
 
