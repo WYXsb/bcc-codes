@@ -1,7 +1,14 @@
 
 BPF_RINGBUF_OUTPUT(buffer, 1 << 4);
-
-
+struct time {
+    int year;
+    int month;
+    int day;
+    int hour;
+    int minute;
+    int seconds;
+};
+BPF_ARRAY(time_array,struct time,10);
 struct event {
     char filename[64];
     int dfd;
@@ -38,6 +45,11 @@ TRACEPOINT_PROBE(syscalls, sys_enter_close)
     {
         //bpf_trace_printk("%s\\n",event->filename);
         event->lasttime = bpf_ktime_get_ns() - event->opentime;
+        
+        int index = 0;
+        struct time *info = time_array.lookup(&index);
+        if(info != NULL)
+            bpf_trace_printk("%lld\\n",bpf_ktime_get_ns() / 1000000000);
         buffer.ringbuf_output(event, sizeof(struct event), 0);
     }
     return 0;
