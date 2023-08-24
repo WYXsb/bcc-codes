@@ -1,43 +1,50 @@
 # 
 import sys
 import os
+import datetime
 import time
 import ctypes
 from ctypes import *
+import psutil
+from pprint import pprint
 from bcc import BPF
 
 b = BPF(src_file = "trace_opentime.c")
 rootpath = os.getcwd() + "/file"
 path = "./file"
-# rootpath = "/home/wyx/workspace/bcc-codes/file"
-# times = 0
-print(rootpath)
+
+
+print("rootpath:" + rootpath)
+# localtime = time.localtime()
+starttime = datetime.datetime.now()
+print(type(starttime))
+print("Now:" + starttime.strftime("%Y-%m-%d %H:%M:%S"))
+# l = localtime.split()
+
+time_array = b.get_table("time_array")
+class BeijingTime(Structure):
+    _fields_ = [(
+            ("boottime",c_ulonglong))]
+boot_time = psutil.boot_time()
+boot_datetime = datetime.datetime.fromtimestamp(boot_time)
+print(type(boot_datetime))
+localtime = [c_ulonglong(int(psutil.boot_time()))]
+beijingTime = BeijingTime(*localtime)
+time_array[ctypes.c_int(0)] = beijingTime           
 
 def callback(ctx, data, size):
+    global boot_datetime
     event = b['buffer'].event(data)
     if path == event.filename.decode('utf-8') or rootpath == event.filename.decode('utf-8'):
-        print("%-64s %10d %10d %10d %s" % (event.filename.decode('utf-8'), event.dfd, event.flags, event.mode,time.strftime('%a %b %d %H:%M:%S %Y', time.localtime())))
-    # print("%-64s %10d %10d %10d %24d" % (event.filename.decode('utf-8'), event.dfd, event.flags, event.mode,event.lasttime))
+        opentime = boot_datetime +datetime.timedelta(seconds= (event.opentime) / 1000000000)
+        print("%-64s %10d %10d %10d %24s" % (event.filename.decode('utf-8'), event.dfd, event.flags, event.mode,opentime.strftime("%Y-%m-%d %H:%M:%S")))
+        # print("%-64s %10d %10d %10d %24d" % (event.filename.decode('utf-8'), event.dfd, event.flags, event.mode,opentime.strftime("%Y-%m-%d %H:%M:%S")))
     
 
 b['buffer'].open_ring_buffer(callback)
-time_array = b.get_table("time_array")
 
-localtime = time.strftime('%Y %m %d %H %M %S', time.localtime())
-l = localtime.split()
 
-class BeijingTime(Structure):
-    _fields_ = [("year", c_int),
-            ("month", c_int),
-            ("day", c_int),
-            ("hour", c_int),
-            ("minute", c_int),
-            ("second", c_int)]
-            
-localtime = [c_int(int(l[0])),c_int(int(l[1])),c_int(int(l[2])),c_int(int(l[3])),c_int(int(l[4])),c_int(int(l[5]))]
-print(localtime)
-beijingTime = BeijingTime(*localtime)
-time_array[ctypes.c_int(0)] = beijingTime
+
 print("Printing openat() calls, ctrl-c to exit.")
 
 print("%-64s %10s %10s %10s %24s" % ("FILENAME", "DIR_FD", "FLAGS", "MODE", "OPENTIME"))
