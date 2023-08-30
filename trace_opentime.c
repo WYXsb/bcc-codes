@@ -28,9 +28,9 @@ TRACEPOINT_PROBE(syscalls, sys_enter_openat) {
     if(info != NULL)
     {
         event.opentime = bpf_ktime_get_ns();
-        if(bpf_ktime_get_ns() < 10)
+        // if time > 15:39:53 ,then return 
+        if(event.opentime / 1000000000+ info->boottime  > 1692862793)
             return 0;
-        //event.lasttime = (event.opentime + info->boottime * 1000000000);
     }
     bpf_probe_read_user_str(event.filename, sizeof(event.filename), args->filename);
 

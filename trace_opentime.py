@@ -6,7 +6,6 @@ import time
 import ctypes
 from ctypes import *
 import psutil
-from pprint import pprint
 from bcc import BPF
 
 b = BPF(src_file = "trace_opentime.c")
@@ -15,11 +14,10 @@ path = "./file"
 
 
 print("rootpath:" + rootpath)
-# localtime = time.localtime()
+
 starttime = datetime.datetime.now()
-print(type(starttime))
 print("Now:" + starttime.strftime("%Y-%m-%d %H:%M:%S"))
-# l = localtime.split()
+
 
 time_array = b.get_table("time_array")
 class BeijingTime(Structure):
@@ -27,7 +25,7 @@ class BeijingTime(Structure):
             ("boottime",c_ulonglong))]
 boot_time = psutil.boot_time()
 boot_datetime = datetime.datetime.fromtimestamp(boot_time)
-print(type(boot_datetime))
+
 localtime = [c_ulonglong(int(psutil.boot_time()))]
 beijingTime = BeijingTime(*localtime)
 time_array[ctypes.c_int(0)] = beijingTime           
